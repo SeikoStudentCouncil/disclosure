@@ -8,7 +8,7 @@ function function1() {
   const sheet = SpreadsheetApp.getActiveSheet();
   const fileList = Array.from(getFileListGenerator(parent, path));
   fileList.unshift(["fileId", "oldFile", "Folder", "TimeStamp", "MimeType"]);
-  sheet.getRange(1, 2, fileList.length, 5).setValues(fileList);
+  sheet.getRange(1, 3, fileList.length, 5).setValues(fileList);
 }
 function getHyperlink(url: string, linkLabel: string) {
   return `=HYPERLINK("${url}","${linkLabel}")`;
@@ -55,10 +55,12 @@ function onOpen(/* event: GoogleAppsScript.Events.SheetsOnOpen */) {
 function function2() {
   const currentCell = SpreadsheetApp.getCurrentCell();
   const sheet = currentCell.getSheet();
-  const newFileCell = sheet.getRange(currentCell.getRow(), 1);
+  const newFileCells = sheet.getRange(currentCell.getRow(), 1, 1, 2);
   const oldFileCell = sheet.getRange(currentCell.getRow(), 2);
   const fileId: string = oldFileCell.getValue();
   const oldFile = DriveApp.getFileById(fileId);
   const newFile = oldFile.makeCopy();
-  newFileCell.setValue(getHyperlink(newFile.getUrl(), newFile.getName()));
+  newFileCells.setValues([
+    [newFile.getId(), getHyperlink(newFile.getUrl(), newFile.getName())],
+  ]);
 }
