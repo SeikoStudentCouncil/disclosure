@@ -80,14 +80,39 @@ function mkdir(
   return mkdir(childFolder, pathList);
 }
 function function2() {
-  const currentCell = SpreadsheetApp.getCurrentCell();
-  const sheet = currentCell.getSheet();
-  const newFileCells = sheet.getRange(currentCell.getRow(), 1, 1, 2);
-  const oldFileCell = sheet.getRange(currentCell.getRow(), 3);
-  const fileId: string = oldFileCell.getValue();
-  const oldFile = DriveApp.getFileById(fileId);
-  const newFile = oldFile.makeCopy();
-  newFileCells.setValues([
-    [newFile.getId(), getHyperlink(newFile.getUrl(), newFile.getName())],
-  ]);
+  const newFolder = DriveApp.getFolderById(newFolderId);
+  const rangeList = SpreadsheetApp.getActiveRangeList();
+  const sheet = SpreadsheetApp.getActiveSheet();
+  for (const range of rangeList.getRanges()) {
+    const newFileCells = sheet.getRange(
+      range.getRow(),
+      1,
+      range.getNumRows(),
+      3
+    );
+    const oldFilesCells = sheet.getRange(
+      range.getRow(),
+      4,
+      range.getNumRows(),
+      3
+    );
+    const fileIds = oldFilesCells
+      .getValues()
+      .map((v: string[]): [string, string] => [v[0], v[2]]);
+    newFileCells.setValues(
+      fileIds.map(function ([fileId, path]): [string, string,string] {
+        const oldFile = DriveApp.getFileById(fileId);
+        const destination = cd(newFolder, path);
+        const newFile = oldFile.makeCopy(
+          oldFile.getName(),
+          destination
+        );
+        return [
+          newFile.getId(),
+          getHyperlink(newFile.getUrl(), newFile.getName()),
+          getHyperlink(destination.getUrl(),path)
+        ];
+      })
+    );
+  }
 }
