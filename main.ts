@@ -1,6 +1,8 @@
-const folderId = "1TuP8dRasRAY-M-1OPJh7wg8x50tx63Dx";
+const scriptProperties = PropertiesService.getScriptProperties();
+const oldFolderId = scriptProperties.getProperty("oldFolderId") as string;
+const newFolderId = scriptProperties.getProperty("newFolderId") as string;
 function function1() {
-  const parent = DriveApp.getFolderById(folderId);
+  const parent = DriveApp.getFolderById(oldFolderId);
   const path = parent.getName();
   /*  for (const ans of getFileListGenerator(parent, path)) {
     console.log(ans);
@@ -52,15 +54,65 @@ function onOpen(/* event: GoogleAppsScript.Events.SheetsOnOpen */) {
     .addItem("function2", "function2")
     .addToUi();
 }
+function cd(currentDirectory: GoogleAppsScript.Drive.Folder, path: string) {
+  return mkdir(currentDirectory, path.split("/").reverse());
+}
+/**
+ * make folders with nested folders
+ * pathList is like this:
+ *
+ *     const path = "root/parent/sub"
+ *     const pathList = path.split("/").reverse()
+ *     pathList==['sub', 'parent', 'root']
+ */
+function mkdir(
+  currentDirectory: GoogleAppsScript.Drive.Folder,
+  pathList: string[]
+): GoogleAppsScript.Drive.Folder {
+  if (!pathList.length) {
+    return currentDirectory;
+  }
+  const childFolderName = pathList.pop() as string;
+  const folderIterator = currentDirectory.getFoldersByName(childFolderName);
+  const childFolder = folderIterator.hasNext()
+    ? folderIterator.next()
+    : currentDirectory.createFolder(childFolderName);
+  return mkdir(childFolder, pathList);
+}
 function function2() {
-  const currentCell = SpreadsheetApp.getCurrentCell();
-  const sheet = currentCell.getSheet();
-  const newFileCells = sheet.getRange(currentCell.getRow(), 1, 1, 2);
-  const oldFileCell = sheet.getRange(currentCell.getRow(), 2);
-  const fileId: string = oldFileCell.getValue();
-  const oldFile = DriveApp.getFileById(fileId);
-  const newFile = oldFile.makeCopy();
-  newFileCells.setValues([
-    [newFile.getId(), getHyperlink(newFile.getUrl(), newFile.getName())],
-  ]);
+  const newFolder = DriveApp.getFolderById(newFolderId);
+  const rangeList = SpreadsheetApp.getActiveRangeList();
+  const sheet = SpreadsheetApp.getActiveSheet();
+  for (const range of rangeList.getRanges()) {
+    const newFileCells = sheet.getRange(
+      range.getRow(),
+      1,
+      range.getNumRows(),
+      3
+    );
+    const oldFilesCells = sheet.getRange(
+      range.getRow(),
+      4,
+      range.getNumRows(),
+      3
+    );
+    const fileIds = oldFilesCells
+      .getValues()
+      .map((v: string[]): [string, string] => [v[0], v[2]]);
+    newFileCells.setValues(
+      fileIds.map(function ([fileId, path]): [string, string,string] {
+        const oldFile = DriveApp.getFileById(fileId);
+        const destination = cd(newFolder, path);
+        const newFile = oldFile.makeCopy(
+          oldFile.getName(),
+          destination
+        );
+        return [
+          newFile.getId(),
+          getHyperlink(newFile.getUrl(), newFile.getName()),
+          getHyperlink(destination.getUrl(),path)
+        ];
+      })
+    );
+  }
 }
