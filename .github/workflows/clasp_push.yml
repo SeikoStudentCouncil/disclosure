@@ -44,10 +44,10 @@ jobs:
         run: clasp help
       
       - name: create .clasprc.json
-        run: echo ${{ secrets.CLASPRC }} > .clasprc.json
+        run: echo "${{ secrets.CLASPRC }}" > .clasprc.json
       
       - name: create .clasp.json
-        run: echo ${{ secrets.CLASPJSON }} > .clasp.json
+        run: echo "${{ secrets.CLASPJSON }}" > .clasp.json
 
       - name: ls2
         run: ls -la
