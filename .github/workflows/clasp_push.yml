@@ -48,7 +48,10 @@ jobs:
       
       - name: create .clasp.json
         run: echo ${{ secrets.CLASPJSON }} > .clasp.json
-      
+
+      - name: ls2
+        run: ls
+
       - name: clasp push
         run: clasp push --force
 
