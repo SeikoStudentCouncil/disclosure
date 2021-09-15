@@ -30,6 +30,12 @@ jobs:
       - name: Run a one-line script
         run: echo Hello, world!
         
+      - name: pwd
+        run: pwd
+      
+      - name: ls
+        run: ls
+
       - name: install clasp
         run: npm i @google/clasp -g
       
