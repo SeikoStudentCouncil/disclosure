@@ -30,6 +30,12 @@ jobs:
       - name: Run a one-line script
         run: echo Hello, world!
         
+      - name: pwd
+        run: pwd
+      
+      - name: ls
+        run: ls -la
+
       - name: install clasp
         run: npm i @google/clasp -g
       
@@ -38,13 +44,16 @@ jobs:
         run: clasp help
       
       - name: create .clasprc.json
-        run: echo ${{ secrets.CLASPRC }} > .clasprc.json
+        run: echo "${{ secrets.CLASPRC }}" > .clasprc.json
       
       - name: create .clasp.json
-        run: echo ${{ secrets.CLASPJSON }} > .clasp.json
-      
+        run: echo "${{ secrets.CLASPJSON }}" > .clasp.json
+
+      - name: ls2
+        run: ls -la
+
       - name: clasp push
-        run: clasp push --force
+        run: clasp push --force --auth .clasprc.json
 
       # Runs a set of commands using the runners shell
       - name: Run a multi-line script
