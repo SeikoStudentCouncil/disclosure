@@ -34,7 +34,7 @@ jobs:
         run: pwd
       
       - name: ls
-        run: ls
+        run: ls -la
 
       - name: install clasp
         run: npm i @google/clasp -g
@@ -50,7 +50,7 @@ jobs:
         run: echo ${{ secrets.CLASPJSON }} > .clasp.json
 
       - name: ls2
-        run: ls
+        run: ls -la
 
       - name: clasp push
         run: clasp push --force
