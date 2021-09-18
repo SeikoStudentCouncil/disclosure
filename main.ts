@@ -10,6 +10,11 @@ declare namespace GoogleAppsScript {
   }
 }
 
+interface FileObject {
+  path: string;
+  row: number | null;
+}
+
 function function1() {
   const parent = DriveApp.getFolderById(oldFolderId);
   const path = parent.getName();
@@ -17,9 +22,11 @@ function function1() {
     console.log(ans);
   } */
   const sheet = SpreadsheetApp.getActiveSheet();
-  const oldFilesSet = getOldFilesSet(sheet);
-  const fileList = Array.from(getFileListGenerator(parent, path, oldFilesSet));
-  if (!oldFilesSet.has("oldfileId")) {
+  const oldFilesMap = getOldFilesMap(sheet);
+  const fileList = Array.from(
+    getFileListGenerator(parent, path, oldFilesMap, sheet)
+  );
+  if (!oldFilesMap.has("oldfileId")) {
     fileList.unshift([
       "oldfileId",
       "timeStamp",
@@ -29,11 +36,19 @@ function function1() {
       "MimeType",
     ]);
   }
-  sheet.getRange(sheet.getLastRow()+1, 4, fileList.length, 6).setValues(fileList);
+  if (fileList.length) {
+    sheet
+      .getRange(sheet.getLastRow() + 1, 4, fileList.length, 6)
+      .setValues(fileList);
+  }
 }
-function getOldFilesSet(sheet: GoogleAppsScript.Spreadsheet.Sheet) {
-  return new Set(
-    (sheet.getRange("D:D").getValues() as [string][]).map((v) => v[0])
+function getOldFilesMap(sheet: GoogleAppsScript.Spreadsheet.Sheet) {
+  return new Map(
+    Array.from(
+      (
+        sheet.getRange("D:G").getValues() as [string, string, string, string][]
+      ).entries()
+    ).map((v) => [v[1][0], { path: v[1][3], row: v[0] + 1 } as FileObject])
   );
 }
 function getHyperlink(url: string, linkLabel: string) {
@@ -42,7 +57,8 @@ function getHyperlink(url: string, linkLabel: string) {
 function* getFileListGenerator(
   parent: GoogleAppsScript.Drive.Folder,
   path: string,
-  oldFilesSet: Set<string>
+  oldFilesMap: Map<string, FileObject>,
+  sheet: GoogleAppsScript.Spreadsheet.Sheet
 ): Generator<[string, string, string, string, string, string]> {
   const childFiles = parent.getFiles();
   while (childFiles.hasNext()) {
@@ -58,16 +74,24 @@ function* getFileListGenerator(
           const childFolder = DriveApp.getFolderById(targetId);
           yield* getFileListGenerator(
             childFolder,
-            path + childFolder.getName(),
-            oldFilesSet
+            path + "/" + childFolder.getName(),
+            oldFilesMap,
+            sheet
           );
         } else {
           // if file shortcut
           const targetChildFile = DriveApp.getFileById(targetId);
-          if (oldFilesSet.has(targetId)) {
-            continue;
+          const fileObject = oldFilesMap.get(targetId);
+          if (fileObject) {
+            if (fileObject.path === path) {
+              continue;
+            } else {
+              if (fileObject.row) {
+                sheet.deleteRow(fileObject.row);
+              }
+            }
           }
-          oldFilesSet.add(targetId);
+          oldFilesMap.set(targetId, { path, row: null });
           yield [
             targetId,
             String(targetChildFile.getLastUpdated().getTime()),
@@ -84,10 +108,17 @@ function* getFileListGenerator(
         }
       } else {
         const childFileId = childFile.getId();
-        if (oldFilesSet.has(childFileId)) {
-          continue;
+        const fileObject = oldFilesMap.get(childFileId);
+        if (fileObject) {
+          if (fileObject.path === path) {
+            continue;
+          } else {
+            if (fileObject.row) {
+              sheet.deleteRow(fileObject.row);
+            }
+          }
         }
-        oldFilesSet.add(childFileId);
+        oldFilesMap.set(childFileId, { path, row: null });
         yield [
           childFileId,
           String(childFile.getLastUpdated().getTime()),
@@ -101,20 +132,20 @@ function* getFileListGenerator(
             ),
           childFile.getMimeType(),
         ];
-
-        const childFolders = parent.getFolders();
-        while (childFolders.hasNext()) {
-          const childFolder = childFolders.next();
-          yield* getFileListGenerator(
-            childFolder,
-            path + "/" + childFolder.getName(),
-            oldFilesSet
-          );
-        }
       }
     } catch (e) {
       console.log(e);
     }
+  }
+  const childFolders = parent.getFolders();
+  while (childFolders.hasNext()) {
+    const childFolder = childFolders.next();
+    yield* getFileListGenerator(
+      childFolder,
+      path + "/" + childFolder.getName(),
+      oldFilesMap,
+      sheet
+    );
   }
 }
 
