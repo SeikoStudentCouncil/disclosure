@@ -199,11 +199,11 @@ function function2() {
       range.getRow(),
       4,
       range.getNumRows(),
-      3
+      4
     );
-    const fileIds = oldFilesCells
-      .getValues()
-      .map((v: string[]): [string, string] => [v[0], v[2]]);
+    const fileIds = (oldFilesCells.getValues() as string[][]).map(
+      (v): [string, string] => [v[0], v[3]]
+    );
     newFileCells.setValues(
       fileIds.map(function ([fileId, path]): [string, string, string] {
         const oldFile = DriveApp.getFileById(fileId);
